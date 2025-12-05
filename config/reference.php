@@ -186,7 +186,7 @@ namespace Symfony\Component\DependencyInjection\Loader\Configurator;
  *         only_exceptions?: bool, // Default: false
  *         only_main_requests?: bool, // Default: false
  *         dsn?: scalar|null, // Default: "file:%kernel.cache_dir%/profiler"
- *         collect_serializer_data?: true, // Default: true
+ *         collect_serializer_data?: bool, // Enables the serializer data collector and profiler panel. // Default: false
  *     },
  *     workflows?: bool|array{
  *         enabled?: bool, // Default: false
@@ -230,6 +230,7 @@ namespace Symfony\Component\DependencyInjection\Loader\Configurator;
  *         enabled?: bool, // Default: false
  *         resource: scalar|null,
  *         type?: scalar|null,
+ *         cache_dir?: scalar|null, // Deprecated: Setting the "framework.router.cache_dir.cache_dir" configuration option is deprecated. It will be removed in version 8.0. // Default: "%kernel.build_dir%"
  *         default_uri?: scalar|null, // The default URI used to generate URLs in a non-HTTP context. // Default: null
  *         http_port?: scalar|null, // Default: 80
  *         https_port?: scalar|null, // Default: 443
@@ -253,6 +254,8 @@ namespace Symfony\Component\DependencyInjection\Loader\Configurator;
  *         gc_maxlifetime?: scalar|null,
  *         save_path?: scalar|null, // Defaults to "%kernel.cache_dir%/sessions" if the "handler_id" option is not null.
  *         metadata_update_threshold?: int, // Seconds to wait between 2 session metadata updates. // Default: 0
+ *         sid_length?: int, // Deprecated: Setting the "framework.session.sid_length.sid_length" configuration option is deprecated. It will be removed in version 8.0. No alternative is provided as PHP 8.4 has deprecated the related option.
+ *         sid_bits_per_character?: int, // Deprecated: Setting the "framework.session.sid_bits_per_character.sid_bits_per_character" configuration option is deprecated. It will be removed in version 8.0. No alternative is provided as PHP 8.4 has deprecated the related option.
  *     },
  *     request?: bool|array{ // Request configuration
  *         enabled?: bool, // Default: false
@@ -326,10 +329,11 @@ namespace Symfony\Component\DependencyInjection\Loader\Configurator;
  *     },
  *     validation?: bool|array{ // Validation configuration
  *         enabled?: bool, // Default: true
+ *         cache?: scalar|null, // Deprecated: Setting the "framework.validation.cache.cache" configuration option is deprecated. It will be removed in version 8.0.
  *         enable_attributes?: bool, // Default: true
  *         static_method?: list<scalar|null>,
  *         translation_domain?: scalar|null, // Default: "validators"
- *         email_validation_mode?: "html5"|"html5-allow-no-tld"|"strict", // Default: "html5"
+ *         email_validation_mode?: "html5"|"html5-allow-no-tld"|"strict"|"loose", // Default: "html5"
  *         mapping?: array{
  *             paths?: list<scalar|null>,
  *         },
@@ -341,6 +345,9 @@ namespace Symfony\Component\DependencyInjection\Loader\Configurator;
  *         auto_mapping?: array<string, array{ // Default: []
  *             services?: list<scalar|null>,
  *         }>,
+ *     },
+ *     annotations?: bool|array{
+ *         enabled?: bool, // Default: false
  *     },
  *     serializer?: bool|array{ // Serializer configuration
  *         enabled?: bool, // Default: true
@@ -373,7 +380,7 @@ namespace Symfony\Component\DependencyInjection\Loader\Configurator;
  *     },
  *     property_info?: bool|array{ // Property info configuration
  *         enabled?: bool, // Default: true
- *         with_constructor_extractor?: bool, // Registers the constructor extractor. // Default: true
+ *         with_constructor_extractor?: bool, // Registers the constructor extractor.
  *     },
  *     cache?: array{ // Cache configuration
  *         prefix_seed?: scalar|null, // Used to namespace cache keys when using several apps with the same shared backend. // Default: "_%kernel.project_dir%.%kernel.container_class%"
@@ -1453,6 +1460,27 @@ namespace Symfony\Component\DependencyInjection\Loader\Configurator;
  *     generate_final_classes?: bool, // Default: true
  *     generate_final_entities?: bool, // Default: false
  * }
+ * @psalm-type MercureConfig = array{
+ *     hubs?: array<string, array{ // Default: []
+ *         url?: scalar|null, // URL of the hub's publish endpoint
+ *         public_url?: scalar|null, // URL of the hub's public endpoint // Default: null
+ *         jwt?: string|array{ // JSON Web Token configuration.
+ *             value?: scalar|null, // JSON Web Token to use to publish to this hub.
+ *             provider?: scalar|null, // The ID of a service to call to provide the JSON Web Token.
+ *             factory?: scalar|null, // The ID of a service to call to create the JSON Web Token.
+ *             publish?: list<scalar|null>,
+ *             subscribe?: list<scalar|null>,
+ *             secret?: scalar|null, // The JWT Secret to use.
+ *             passphrase?: scalar|null, // The JWT secret passphrase. // Default: ""
+ *             algorithm?: scalar|null, // The algorithm to use to sign the JWT // Default: "hmac.sha256"
+ *         },
+ *         jwt_provider?: scalar|null, // Deprecated: The child node "jwt_provider" at path "mercure.hubs..jwt_provider" is deprecated, use "jwt.provider" instead. // The ID of a service to call to generate the JSON Web Token.
+ *         bus?: scalar|null, // Name of the Messenger bus where the handler for this hub must be registered. Default to the default bus if Messenger is enabled.
+ *     }>,
+ *     default_hub?: scalar|null,
+ *     default_cookie_lifetime?: int, // Default lifetime of the cookie containing the JWT, in seconds. Defaults to the value of "framework.session.cookie_lifetime". // Default: null
+ *     enable_profiler?: bool, // Deprecated: The child node "enable_profiler" at path "mercure.enable_profiler" is deprecated. // Enable Symfony Web Profiler integration.
+ * }
  * @psalm-type ConfigType = array{
  *     imports?: ImportsConfig,
  *     parameters?: ParametersConfig,
@@ -1466,6 +1494,7 @@ namespace Symfony\Component\DependencyInjection\Loader\Configurator;
  *     twig_extra?: TwigExtraConfig,
  *     security?: SecurityConfig,
  *     monolog?: MonologConfig,
+ *     mercure?: MercureConfig,
  *     "when@dev"?: array{
  *         imports?: ImportsConfig,
  *         parameters?: ParametersConfig,
@@ -1482,6 +1511,7 @@ namespace Symfony\Component\DependencyInjection\Loader\Configurator;
  *         security?: SecurityConfig,
  *         monolog?: MonologConfig,
  *         maker?: MakerConfig,
+ *         mercure?: MercureConfig,
  *     },
  *     "when@prod"?: array{
  *         imports?: ImportsConfig,
@@ -1496,6 +1526,7 @@ namespace Symfony\Component\DependencyInjection\Loader\Configurator;
  *         twig_extra?: TwigExtraConfig,
  *         security?: SecurityConfig,
  *         monolog?: MonologConfig,
+ *         mercure?: MercureConfig,
  *     },
  *     "when@test"?: array{
  *         imports?: ImportsConfig,
@@ -1511,6 +1542,7 @@ namespace Symfony\Component\DependencyInjection\Loader\Configurator;
  *         twig_extra?: TwigExtraConfig,
  *         security?: SecurityConfig,
  *         monolog?: MonologConfig,
+ *         mercure?: MercureConfig,
  *     },
  *     ...<string, ExtensionType|array{ // extra keys must follow the when@%env% pattern or match an extension alias
  *         imports?: ImportsConfig,
